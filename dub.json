@@ -1,9 +1,12 @@
 {
-    "description": "A minimal D application.",
-    "license": "proprietary",
-    "authors": [
-        "sahan"
-    ],
-    "copyright": "Copyright © 2026, sahan",
-    "name": "agent_harness"
+	"description": "A minimal D application.",
+	"dependencies": {
+		"asdf": "~>0.8.0"
+	},
+	"authors": [
+		"sahan"
+	],
+	"copyright": "Copyright © 2026, sahan",
+	"license": "proprietary",
+	"name": "agent_harness"
 }
