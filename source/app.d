@@ -34,14 +34,30 @@ double add2(AddReq req) {
     return req.a + req.b;
 }
 
+string runTool(alias f)(string data) {
+    // TODO: Generic
+    auto req = data.deserialize!AddReq;
+    auto resp = add2(req);
+    return resp.serializeToJson;
+}
+
 void handleToolResponses(ref LlamaMessage[] history) {
     auto lastMessage = history[$ - 1];
     if (lastMessage.toolCalls == []) {
         return;
     }
     foreach (call; lastMessage.toolCalls) {
+        auto funcName = call.function_.name;
+        auto argsJson = call.function_.argumentsJson;
+        string resp;
+        try {
+            resp = argsJson.runTool!add2;
+        } catch(Exception e) {
+            resp = "Internal error";
+        }
+        // TODO: Handle errors
         history ~= [
-            LlamaMessage(role : "tool", toolCallId: call.id, content: "0")
+            LlamaMessage(role : "tool", toolCallId: call.id, content: resp)
         ];
     }
 }
