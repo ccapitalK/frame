@@ -2,11 +2,6 @@ module agent_harness.llamacpp_proto;
 
 import asdf;
 
-//         "type": "function",
-//         "function": {
-//           "name": "get_temperature",
-//           "arguments": "{\"city\": \"Sydney\"}"
-//         },
 struct LlamaToolFunctionCall {
     string name;
 
@@ -16,6 +11,8 @@ struct LlamaToolFunctionCall {
 
 struct LlamaToolCall {
     string type;
+
+    string id;
 
     @serdeKeys("function")
     LlamaToolFunctionCall function_;
@@ -29,6 +26,11 @@ struct LlamaMessage {
     @serdeKeys("reasoning_content")
     @serdeIgnoreOutIf!"a == []"
     string reasoningContent;
+
+    @serdeOptional
+    @serdeKeys("tool_call_id")
+    @serdeIgnoreOutIf!"a == []"
+    string toolCallId;
 
     @serdeOptional
     @serdeKeys("tool_calls")
@@ -66,6 +68,8 @@ struct LlamaReq {
     double temperature = 0;
     @serdeOptional
     bool stream;
+    @serdeKeys("parallel_tool_calls")
+    bool parallelToolCalls = true;
     LlamaMessage[] messages;
     LlamaToolDef[] tools;
 }
@@ -84,6 +88,7 @@ unittest {
 
     auto req1 = `{
   "messages": [{"role":"user","content":"temp in Sydney?"}],
+  "parallel_tool_calls": true,
   "tools": [{"type":"function","function":{
     "name":"get_temperature",
     "description": "Get the current temperature for a city",
@@ -91,8 +96,8 @@ unittest {
       "properties":{"city":{"type":"string", "description":  "The name of the city"}}}}}],
   "temperature": 0
 }`;
-    auto expected1 = LlamaReq("", 0, false, [
-        LlamaMessage("user", "temp in Sydney?", "", [])
+    auto expected1 = LlamaReq("", 0, false, true, [
+        LlamaMessage("user", "temp in Sydney?", "", "", [])
     ], [
         LlamaToolDef(
             "function",
@@ -124,12 +129,13 @@ unittest {
         LlamaResponseChoice(
             "tool_calls",
             LlamaMessage(
-                "assistant",
-                "",
-                `Okay, the user is asking for the temperature in Sydney. Let me check the tools available. There's a `
+                role: "assistant",
+                content: "",
+                reasoningContent: `Okay, the user is asking for the temperature in Sydney. Let me check the tools available. There's a `
                 ~ `function called get_temperature that requires the city parameter. Since the user mentioned Sydney, `
                 ~ `I need to call that function with the city set to Sydney. I'll make sure to format the tool call `
                 ~ `correctly within the XML tags.` ~ '\n',
+                toolCallId: "",
                 [LlamaToolCall("function", LlamaToolFunctionCall("get_temperature", "{\"city\": \"Sydney\"}"))]
             )
         )]);

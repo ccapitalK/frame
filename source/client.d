@@ -17,13 +17,19 @@ struct ModelServer {
     string host;
     string port;
     string model = "qwen3:8b";
+    LlamaToolDef[] tools;
 }
 
-LlamaResponse makeChatReq(ModelServer host, LlamaReq req) {
+LlamaResponse sendReq(ModelServer server, LlamaMessage[] history) {
+    auto req = LlamaReq(
+        model: server.model,
+        messages: history,
+        tools: server.tools,
+    );
     auto payload = req.serializeToJson;
     // TODO: Streaming fetch
     auto builder = appender!(ubyte[]);
-    auto http = HTTP(host.apiUrl());
+    auto http = HTTP(server.apiUrl());
     http.method = HTTP.Method.get;
     http.contentLength = payload.length;
     http.onSend = (void[] data) {
@@ -40,12 +46,11 @@ LlamaResponse makeChatReq(ModelServer host, LlamaReq req) {
     };
     http.perform();
     auto str = cast(string) builder.data().idup;
+    writeln(str);
     return str.deserialize!LlamaResponse;
 }
 
-LlamaReq makeReq(ModelServer server, string prompt, LlamaMessage[] history = []) {
-    return LlamaReq(
-        model: server.model,
-        messages: history ~ [LlamaMessage(role: "user", content: prompt)]
-    );
-}
+/// Put this at the start of the history to provide a system prompt
+LlamaMessage systemPrompt(string prompt) => LlamaMessage(role: "system", content: prompt);
+
+LlamaMessage userPrompt(string prompt) => LlamaMessage(role: "user", content: prompt);
