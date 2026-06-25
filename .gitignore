@@ -1,0 +1,17 @@
+.dub
+docs.json
+__dummy.html
+docs/
+/agent_harness
+agent_harness.so
+agent_harness.dylib
+agent_harness.dll
+libagent_harness.a
+agent_harness.a
+agent_harness.lib
+agent_harness-test-*
+*.exe
+*.pdb
+*.o
+*.obj
+*.lst
