@@ -17,6 +17,8 @@ struct ModelServer {
     string host;
     string port;
     string model = "qwen3:8b";
+    // TODO: Remove this
+    bool printResponses = false;
     LlamaToolDef[] tools;
 }
 
@@ -46,7 +48,7 @@ LlamaResponse sendReq(ModelServer server, LlamaMessage[] history) {
     };
     http.perform();
     auto str = cast(string) builder.data().idup;
-    writeln(str);
+    if (server.printResponses) writeln(str);
     return str.deserialize!LlamaResponse;
 }
 

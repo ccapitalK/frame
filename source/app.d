@@ -70,7 +70,7 @@ void main(string[] args) {
     auto host = ModelServer("localhost", port);
     host.tools = tools;
     auto history = [systemPrompt("You are helping me test my llm harness")];
-    history ~= userPrompt("Test the tools by invoking them, tell me if they are wrong");
+    history ~= userPrompt("Test the tools by invoking them a couple of times with some edge cases, tell me if they are wrong");
     history ~= host.sendReq(history) .choices[0].message;
     history.handleToolResponses();
     history ~= host.sendReq(history).choices[0].message;
