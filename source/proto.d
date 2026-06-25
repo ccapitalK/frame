@@ -1,4 +1,4 @@
-module agent_harness.proto;
+module agent_harness.ollama_proto;
 
 import asdf;
 
