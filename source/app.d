@@ -24,7 +24,8 @@ struct Host {
     string port;
 }
 
-OllamaResponse makeChatReq(Host host, string payload) {
+OllamaResponse makeChatReq(Host host, OllamaReq req) {
+    auto payload = req.serializeToJson;
     // TODO: Streaming fetch
     auto builder = appender!(ubyte[]);
     auto http = HTTP(host.apiUrl());
@@ -47,38 +48,19 @@ OllamaResponse makeChatReq(Host host, string payload) {
     return str.deserialize!OllamaResponse;
 }
 
+OllamaReq makeReq(string prompt, OllamaMessage[] history = []) {
+    return OllamaReq(
+        model: "qwen3:8b",
+        messages: history ~ [OllamaMessage(role: "user", content: prompt)]
+    );
+}
+
 void main(string[] args) {
     string port = "11434";
     if (args.length > 1) {
         port = args[1];
     }
-    enum example1 = `{
-  "model": "qwen3:8b",
-  "stream": false,
-  "think": false,
-  "keep_alive": "30m",
-  "options": { "temperature": 0 },
-  "messages": [
-    {"role": "user", "content": "Who are you?"}
-  ],
-  "tools": [
-    {
-      "type": "function",
-      "function": {
-        "name": "get_temperature",
-        "description": "Get the current temperature for a city",
-        "parameters": {
-          "type": "object",
-          "required": ["city"],
-          "properties": {
-            "city": {"type": "string", "description": "The name of the city"}
-          }
-        }
-      }
-    }
-  ]
-}`;
-
     auto host = Host("localhost", port);
-    writeln(host.makeChatReq(example1));
+    auto req = makeReq("Who are you?");
+    writeln(host.makeChatReq(req));
 }
