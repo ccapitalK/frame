@@ -131,13 +131,15 @@ unittest {
             LlamaMessage(
                 role: "assistant",
                 content: "",
-                reasoningContent: `Okay, the user is asking for the temperature in Sydney. Let me check the tools available. There's a `
-                ~ `function called get_temperature that requires the city parameter. Since the user mentioned Sydney, `
-                ~ `I need to call that function with the city set to Sydney. I'll make sure to format the tool call `
-                ~ `correctly within the XML tags.` ~ '\n',
+                reasoningContent: `Okay, the user is asking for the temperature in Sydney. Let me check the tools `
+                ~ `available. There's a function called get_temperature that requires the city parameter. Since the`
+                ~ ` user mentioned Sydney, I need to call that function with the city set to Sydney. I'll make sure`
+                ~ ` to format the tool call correctly within the XML tags.` ~ '\n',
                 toolCallId: "",
-                [LlamaToolCall("function", LlamaToolFunctionCall("get_temperature", "{\"city\": \"Sydney\"}"))]
+                [LlamaToolCall("function", "iPI6WsqO9K1rzTKlu1MLOz1BeEMOz8Ef",
+                    LlamaToolFunctionCall("get_temperature", "{\"city\": \"Sydney\"}"))]
             )
-        )]);
+        )
+    ]);
     assert(resp1.deserialize!LlamaResponse == expected2);
 }

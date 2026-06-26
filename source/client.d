@@ -56,3 +56,56 @@ LlamaResponse sendReq(ModelServer server, LlamaMessage[] history) {
 LlamaMessage systemPrompt(string prompt) => LlamaMessage(role: "system", content: prompt);
 
 LlamaMessage userPrompt(string prompt) => LlamaMessage(role: "user", content: prompt);
+
+struct ToolDef {
+    LlamaToolDef apiToolDef;
+    string delegate(string) method;
+}
+
+struct ToolSet {
+    LlamaToolDef[] apiToolDefs;
+    ToolDef[string] tools;
+}
+
+ToolSet makeToolSet(ToolDef[] defs) {
+    ToolDef[string] tools;
+    LlamaToolDef[] apiToolDefs;
+    foreach (def; defs) {
+        auto name = def.apiToolDef.function_.name;
+        tools[name] = def;
+        apiToolDefs ~= def.apiToolDef;
+    }
+    return ToolSet(
+        apiToolDefs: apiToolDefs,
+        tools: tools,
+    );
+}
+
+string delegate(string) wrapFuncWithJson(alias f, Req)() {
+    return (string v) {
+        auto decoded = v.deserialize!Req;
+        return f(decoded).serializeToJson;
+    };
+}
+
+void handleToolResponses(ref LlamaMessage[] history, ToolSet toolSet) {
+    auto lastMessage = history[$ - 1];
+    if (lastMessage.toolCalls == []) {
+        return;
+    }
+    foreach (call; lastMessage.toolCalls) {
+        auto funcName = call.function_.name;
+        auto argsJson = call.function_.argumentsJson;
+        string resp;
+        try {
+            auto method = toolSet.tools[funcName].method;
+            resp = method(argsJson);
+        } catch(Exception e) {
+            resp = "Internal error";
+        }
+        // TODO: Handle errors
+        history ~= [
+            LlamaMessage(role : "tool", toolCallId: call.id, content: resp)
+        ];
+    }
+}
