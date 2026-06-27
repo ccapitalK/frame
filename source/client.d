@@ -19,7 +19,10 @@ struct ModelServer {
     string host;
     string port;
     string model = "qwen3:8b";
+    Logger logger;
     ToolSet toolSet;
+
+    Logger getLogger() => logger is null ? stdThreadLocalLog : logger;
 }
 
 bool healthCheck(ModelServer server) {
@@ -58,7 +61,7 @@ LlamaResponse sendReq(ModelServer server, LlamaMessage[] history) {
     };
     http.perform();
     auto str = cast(string) builder.data().idup;
-    tracef("Received response: %s", str);
+    server.getLogger.tracef("Received response: %s", str);
     return str.deserialize!LlamaResponse;
 }
 

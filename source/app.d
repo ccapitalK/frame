@@ -1,6 +1,7 @@
 module agent_harness.app;
 
 import std.conv;
+import std.logger;
 import std.stdio;
 
 import asdf;
@@ -37,7 +38,7 @@ double add2(Num2Req req) => req.a + req.b;
 double sub2(Num2Req req) => req.a - req.b;
 
 void main(string[] args) {
-    string port = "8080";
+    string port = "12349";
     if (args.length > 1) {
         port = args[1];
     }
@@ -47,18 +48,21 @@ void main(string[] args) {
         return;
     }
     host.toolSet = tools.makeToolSet();
+    host.logger = new FileLogger(stdout, LogLevel.trace);
     LlamaMessage[] history;
     history ~= [systemPrompt("You are helping me test my llm harness")];
-    history ~= userPrompt("Test the tools extensively");
+    history ~= userPrompt("Test the tools extensively, including edge case inputs (what happens if you try to avoid the schema?"
+            ~ " Figure out if the harness is preventing you from breaking away from the schema)");
     auto printer = HistoryPrinter(&history);
+    printer.printLog();
     while(true) {
         auto message = host.sendReq(history) .choices[0].message;
         history ~= message;
         if (message.content != "" && message.toolCalls == []) {
             break;
         }
-        printer.printLog();
         history.handleToolResponses(host.toolSet);
+        printer.printLog();
     }
     printer.printLog();
 }

@@ -34,7 +34,12 @@ ToolSet makeToolSet(ToolDef[] defs) {
 
 string delegate(string) wrapFuncWithJson(alias f, Req)() {
     return (string v) {
-        auto decoded = v.deserialize!Req;
+        Req decoded;
+        try {
+            decoded = v.deserialize!Req;
+        } catch (AsdfSerdeException e) {
+            return "Failed to parse input";
+        }
         return f(decoded).serializeToJson;
     };
 }
