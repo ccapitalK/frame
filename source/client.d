@@ -2,12 +2,14 @@ module agent_harness.client;
 
 import std.array;
 import std.format;
+import std.logger;
 import std.net.curl;
 import std.stdio;
 
 import asdf;
 
 import agent_harness.llamacpp_proto;
+import agent_harness.tools;
 
 // TODO: Enforce https if not localhost
 string apiUrl(ModelServer host) =>
@@ -17,16 +19,24 @@ struct ModelServer {
     string host;
     string port;
     string model = "qwen3:8b";
-    // TODO: Remove this
-    bool printResponses = false;
-    LlamaToolDef[] tools;
+    ToolSet toolSet;
+}
+
+bool healthCheck(ModelServer server) {
+    auto url = format!"http://%s:%s/props"(server.host, server.port);
+    try {
+        get(url);
+    } catch(CurlException exception) {
+        return false;
+    }
+    return true;
 }
 
 LlamaResponse sendReq(ModelServer server, LlamaMessage[] history) {
     auto req = LlamaReq(
         model: server.model,
         messages: history,
-        tools: server.tools,
+        tools: server.toolSet.apiToolDefs,
     );
     auto payload = req.serializeToJson;
     // TODO: Streaming fetch
@@ -48,7 +58,7 @@ LlamaResponse sendReq(ModelServer server, LlamaMessage[] history) {
     };
     http.perform();
     auto str = cast(string) builder.data().idup;
-    if (server.printResponses) writeln(str);
+    tracef("Received response: %s", str);
     return str.deserialize!LlamaResponse;
 }
 
@@ -56,56 +66,3 @@ LlamaResponse sendReq(ModelServer server, LlamaMessage[] history) {
 LlamaMessage systemPrompt(string prompt) => LlamaMessage(role: "system", content: prompt);
 
 LlamaMessage userPrompt(string prompt) => LlamaMessage(role: "user", content: prompt);
-
-struct ToolDef {
-    LlamaToolDef apiToolDef;
-    string delegate(string) method;
-}
-
-struct ToolSet {
-    LlamaToolDef[] apiToolDefs;
-    ToolDef[string] tools;
-}
-
-ToolSet makeToolSet(ToolDef[] defs) {
-    ToolDef[string] tools;
-    LlamaToolDef[] apiToolDefs;
-    foreach (def; defs) {
-        auto name = def.apiToolDef.function_.name;
-        tools[name] = def;
-        apiToolDefs ~= def.apiToolDef;
-    }
-    return ToolSet(
-        apiToolDefs: apiToolDefs,
-        tools: tools,
-    );
-}
-
-string delegate(string) wrapFuncWithJson(alias f, Req)() {
-    return (string v) {
-        auto decoded = v.deserialize!Req;
-        return f(decoded).serializeToJson;
-    };
-}
-
-void handleToolResponses(ref LlamaMessage[] history, ToolSet toolSet) {
-    auto lastMessage = history[$ - 1];
-    if (lastMessage.toolCalls == []) {
-        return;
-    }
-    foreach (call; lastMessage.toolCalls) {
-        auto funcName = call.function_.name;
-        auto argsJson = call.function_.argumentsJson;
-        string resp;
-        try {
-            auto method = toolSet.tools[funcName].method;
-            resp = method(argsJson);
-        } catch(Exception e) {
-            resp = "Internal error";
-        }
-        // TODO: Handle errors
-        history ~= [
-            LlamaMessage(role : "tool", toolCallId: call.id, content: resp)
-        ];
-    }
-}
