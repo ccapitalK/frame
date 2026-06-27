@@ -2,6 +2,7 @@ module agent_harness.tools;
 
 import std.algorithm;
 import std.array;
+import std.traits;
 import std.typecons;
 
 import asdf;
@@ -32,7 +33,8 @@ ToolSet makeToolSet(ToolDef[] defs) {
     );
 }
 
-string delegate(string) wrapFuncWithJson(alias f, Req)() {
+private string delegate(string) wrapFuncWithJson(alias f)() if (arity!f == 1) {
+    alias Req = Parameters!f[0];
     return (string v) {
         Req decoded;
         try {
@@ -72,16 +74,48 @@ struct SimpleParam {
     string description;
 }
 
-ToolDef simpleToolDef(string name, string desc, SimpleParam[] params, string delegate(string) method) =>
-    ToolDef(
+struct ToolDoc {
+    string description;
+
+    this(string description) {
+        this.description = description;
+    }
+}
+
+string schemaType(T: int)() => "number";
+string schemaType(T: double)() => "number";
+string schemaType(T: string)() => "string";
+
+SimpleParam[] extractParams(T)() if (isAggregateType!T) {
+    SimpleParam[] params;
+    enum fields = FieldNameTuple!T;
+    static foreach (i; 0 .. fields.length) {{
+        enum field = fields[i];
+        enum qualifiedField = "T." ~ field;
+        enum docFields = getUDAs!(mixin(qualifiedField), ToolDoc);
+        static assert(docFields.length == 1, "Broken ToolDoc for " ~ qualifiedField);
+        params ~= SimpleParam(field, schemaType!(typeof(mixin(qualifiedField))), docFields[0].description);
+    }}
+    return params;
+}
+
+ToolDef simpleToolDef(alias f)(string name, string desc) if (arity!f == 1 && is(ReturnType!f == string)) {
+    enum params = extractParams!(Parameters!f[0]);
+    auto toolParams = LlamaToolParameters(
+        "object",
+        params.map!"a.name".array,
+        params.map!(a => tuple(a.name, LlamaToolProperty(a.type, a.description))).assocArray,
+    );
+    return ToolDef(
         apiToolDef: LlamaToolDef("function", LlamaToolFunction(
             name : name,
             description: desc,
-            LlamaToolParameters(
-                "object",
-                params.map!"a.name".array,
-                params.map!(a => tuple(a.name, LlamaToolProperty(a.type, a.description))).assocArray,
-            ),
+            parameters: toolParams,
         )),
-        method: method,
+        method: wrapFuncWithJson!f,
     );
+}
+
+string withStringOutput(alias f, T=Parameters!f)(T params) {
+    return f(params).serializeToJson;
+}
