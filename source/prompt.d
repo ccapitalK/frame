@@ -61,3 +61,8 @@ void printLog(ref HistoryPrinter printer) {
     printChat(unprinted, printer.toolCallIdsToParams);
     printer.printedWatermark = printer.history.length;
 }
+
+/// Put this at the start of the history to provide a system prompt
+LlamaMessage systemPrompt(string prompt) => LlamaMessage(role: "system", content: prompt);
+
+LlamaMessage userPrompt(string prompt) => LlamaMessage(role: "user", content: prompt);

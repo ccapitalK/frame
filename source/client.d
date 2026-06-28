@@ -64,8 +64,3 @@ LlamaResponse sendReq(ModelServer server, LlamaMessage[] history) {
     server.getLogger.tracef("Received response: %s", str);
     return str.deserialize!LlamaResponse;
 }
-
-/// Put this at the start of the history to provide a system prompt
-LlamaMessage systemPrompt(string prompt) => LlamaMessage(role: "system", content: prompt);
-
-LlamaMessage userPrompt(string prompt) => LlamaMessage(role: "user", content: prompt);
