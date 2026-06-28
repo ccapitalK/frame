@@ -7,6 +7,6 @@
 		"sahan"
 	],
 	"copyright": "Copyright © 2026, sahan",
-	"license": "proprietary",
+	"license": "MIT",
 	"name": "agent_harness"
 }
