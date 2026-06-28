@@ -20,8 +20,8 @@ struct Num2Req {
 
 ToolDef[] tools() {
     return [
-        simpleToolDef!((Num2Req req) => serializeToJson(req.a + req.b))("add2", "Add a and b"),
-        simpleToolDef!((Num2Req req) => serializeToJson(req.a - req.b))("sub2", "Subtract b from a"),
+        simpleToolDef!((Num2Req req) => req.a + req.b)("add2", "Add a and b"),
+        simpleToolDef!((Num2Req req) => req.a - req.b)("sub2", "Subtract b from a"),
     ];
 }
 

@@ -82,6 +82,7 @@ struct ToolDoc {
     }
 }
 
+/// schemaType!T determines the corresponding json schema type for basic type T
 string schemaType(T: int)() => "number";
 string schemaType(T: double)() => "number";
 string schemaType(T: string)() => "string";
@@ -99,7 +100,7 @@ SimpleParam[] extractParams(T)() if (isAggregateType!T) {
     return params;
 }
 
-ToolDef simpleToolDef(alias f)(string name, string desc) if (arity!f == 1 && is(ReturnType!f == string)) {
+ToolDef simpleToolDef(alias f)(string name, string desc) if (arity!f == 1) {
     enum params = extractParams!(Parameters!f[0]);
     auto toolParams = LlamaToolParameters(
         "object",
@@ -114,8 +115,4 @@ ToolDef simpleToolDef(alias f)(string name, string desc) if (arity!f == 1 && is(
         )),
         method: wrapFuncWithJson!f,
     );
-}
-
-string withStringOutput(alias f, T=Parameters!f)(T params) {
-    return f(params).serializeToJson;
 }
