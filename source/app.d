@@ -11,31 +11,19 @@ import agent_harness.llamacpp_proto;
 import agent_harness.prompt;
 import agent_harness.tools;
 
-ToolDef binopDef(alias f)(string name, string desc) => simpleToolDef(
-    name,
-    desc,
-    [
-        SimpleParam("a", "number", "First Number"),
-        SimpleParam("b", "number", "Second Number"),
-    ],
-    wrapFuncWithJson!(f, Num2Req),
-);
-
 struct Num2Req {
+    @ToolDoc("First number")
     double a;
+    @ToolDoc("Second number")
     double b;
 }
 
 ToolDef[] tools() {
     return [
-        binopDef!add2("add2", "Add a and b"),
-        binopDef!sub2("sub2", "Subtract b from a"),
+        simpleToolDef!((Num2Req req) => serializeToJson(req.a + req.b))("add2", "Add a and b"),
+        simpleToolDef!((Num2Req req) => serializeToJson(req.a - req.b))("sub2", "Subtract b from a"),
     ];
 }
-
-double add2(Num2Req req) => req.a + req.b;
-
-double sub2(Num2Req req) => req.a - req.b;
 
 void main(string[] args) {
     string port = "12349";
