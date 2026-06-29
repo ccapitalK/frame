@@ -56,7 +56,11 @@ void handleToolResponses(ref LlamaMessage[] history, ToolSet toolSet) {
         auto argsJson = call.function_.argumentsJson;
         string resp;
         try {
-            auto method = toolSet.tools[funcName].method;
+            auto def = funcName in toolSet.tools;
+            if (!def) {
+                throw new Exception("No tool with that name");
+            }
+            auto method = def.method;
             resp = method(argsJson);
         } catch(Exception e) {
             resp = "Internal error";
@@ -83,7 +87,7 @@ struct ToolDoc {
 }
 
 /// schemaType!T determines the corresponding json schema type for basic type T
-string schemaType(T: int)() => "number";
+string schemaType(T: int)() => "integer";
 string schemaType(T: double)() => "number";
 string schemaType(T: string)() => "string";
 
