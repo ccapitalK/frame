@@ -2,6 +2,7 @@ module agent_harness.app;
 
 import std.array;
 import std.algorithm;
+import std.conv;
 import std.exception;
 import std.file;
 import std.stdio;
@@ -39,12 +40,10 @@ struct DoneFile {
 }
 
 void main(string[] args) {
-    string port = "12349";
-
+    // Setup tools
     auto files = args[1].readText().splitter('\n').filter!"a != []".array;
     string[][string] concepts;
     auto remainingFiles() => files[].filter!(a => a !in concepts);
-
     void[0][string] doneFiles;
     auto tools = [
         simpleToolDef!((Empty _) => remainingFiles.array)
@@ -72,17 +71,23 @@ void main(string[] args) {
         })("doneFile", "Submit that a file has been completely read, with all concepts noted."),
     ];
 
+    // Setup agent
+    ushort port = args.length > 2 ? args[1].to!ushort : 12_349;
     auto host = new ModelServer(httpEndpoint("localhost", port));
     auto agent = makeAgent(host, tools);
+
+    // Configure agent
     agent.setupAgentSystemPrompt(
-        "You are an autonomous agent summarizing code files. You are running fully autonomously, do not prompt the user for more information. "
-        ~ "Make sure that you have read the entire file before claiming you are done reading it. "
-        ~ "Do not try to present concepts to the user directly, all harvested information must be sent through the tools."
+        `You are an autonomous agent summarizing code files. You are running fully autonomously, do not prompt the user
+        for more information. Make sure that you have read the entire file before claiming you are done reading it. 
+        Do not try to present concepts to the user directly, all harvested information must be sent through the tools.`
     );
     agent.promptAsUser(
         "Pick a file to summarize, read through the file, and note all important concepts introduced by that file."
         ~ "Always mark files as done with the doneFile tool once you have finished noting concepts for a specific file. "
     );
+
+    // Run agent
     while (remainingFiles.count > 0) {
         auto numDone = doneFiles.length;
         writeln("==================== REWINDING ====================");
@@ -96,6 +101,7 @@ void main(string[] args) {
         agent.history.printLog();
     }
 
+    // Print results
     foreach (file; concepts.keys) {
         writeln("# ", file);
         writeln();

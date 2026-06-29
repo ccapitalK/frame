@@ -1,6 +1,7 @@
 module agent_harness.client;
 
 import std.array;
+import std.conv;
 import std.format;
 import std.logger;
 import std.net.curl;
@@ -17,6 +18,12 @@ struct ModelServerEndpoint {
     string proto;
     string host;
     string port;
+
+    this(string proto, string host, ushort port) {
+        this.proto = proto;
+        this.host = host;
+        this.port = port.to!string;
+    }
 }
 
 class ModelServer {
@@ -30,7 +37,9 @@ class ModelServer {
         this.endpoint = endpoint;
     }
 
-    string apiUrl() const => format!"%s://%s:%s/v1/chat/completions"(endpoint.proto, endpoint.host, endpoint.port);
+    // TODO(ccapitalk): This is llamacpp-server specific, move into subclass
+    protected string apiUrl() const =>
+        format!"%s://%s:%s/v1/chat/completions"(endpoint.proto, endpoint.host, endpoint.port);
 
     Logger getLogger() => logger is null ? stdThreadLocalLog : logger;
 
@@ -84,5 +93,30 @@ class ModelServer {
     }
 }
 
-ModelServerEndpoint httpEndpoint(string host, string port) => ModelServerEndpoint("http", host, port);
-ModelServerEndpoint httpsEndpoint(string host, string port) => ModelServerEndpoint("https", host, port);
+class GeminiModelServer: ModelServer {
+    this(string apiKey) {
+        super(httpsEndpoint("generativelanguage.googleapis.com", 443));
+        headerOverrides["x-goog-api-key"] = apiKey;
+    }
+
+    override string apiUrl() const => "https://%s:%s/v1/chat/completions";
+
+    override bool healthCheck() const {
+        auto http = HTTP("https://generativelanguage.googleapis.com/v1beta/models");
+        http.method = HTTP.Method.get;
+
+        foreach (kv; headerOverrides.byPair) {
+            http.addRequestHeader(kv[0], kv[1]);
+        }
+
+        try {
+            http.perform();
+        } catch(Exception e) {
+            return false;
+        }
+        return true;
+    }
+}
+
+ModelServerEndpoint httpEndpoint(string host, ushort port) => ModelServerEndpoint("http", host, port);
+ModelServerEndpoint httpsEndpoint(string host, ushort port) => ModelServerEndpoint("https", host, port);
