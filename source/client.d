@@ -45,7 +45,7 @@ class ModelServer {
 
     // TODO(ccapitalk): Subclass, overrides for the different providers
     bool healthCheck() const {
-        auto url = format!"http://%s:%s/props"(endpoint.host, endpoint.port);
+        auto url = format!"%s://%s:%s/props"(endpoint.proto, endpoint.host, endpoint.port);
         try {
             get(url);
         } catch(CurlException exception) {
@@ -65,7 +65,7 @@ class ModelServer {
         auto builder = appender!(ubyte[]);
         // TODO: Handle curl exceptions properly, categorize them
         auto http = HTTP(apiUrl());
-        http.method = HTTP.Method.get;
+        http.method = HTTP.Method.post;
 
         http.contentLength = payload.length;
         foreach (kv; headerOverrides.byPair) {
