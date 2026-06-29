@@ -1,5 +1,6 @@
 module agent_harness.prompt;
 
+import std.algorithm : min;
 import std.format;
 import std.stdio;
 
@@ -60,6 +61,14 @@ void printLog(ref HistoryPrinter printer) {
     auto unprinted = (*printer.history)[printer.printedWatermark .. $];
     printChat(unprinted, printer.toolCallIdsToParams);
     printer.printedWatermark = printer.history.length;
+}
+
+void rewind(ref HistoryPrinter printer, size_t offset) {
+    if (printer.history.length <= offset) {
+        return;
+    }
+    (*printer.history) = (*printer.history)[0 .. offset];
+    printer.printedWatermark = min(printer.printedWatermark, offset);
 }
 
 /// Put this at the start of the history to provide a system prompt
