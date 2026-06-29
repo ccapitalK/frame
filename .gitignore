@@ -15,3 +15,5 @@ frame-test-*
 *.o
 *.obj
 *.lst
+# Examples
+frame_file_summarizer

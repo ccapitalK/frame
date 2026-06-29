@@ -1,4 +1,4 @@
-module frame.app;
+module file_summarizer.app;
 
 import std.array;
 import std.algorithm;

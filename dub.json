@@ -6,6 +6,17 @@
 	"authors": [
 		"sahan"
 	],
+    "targetType": "library",
+    "subPackages": [
+        {
+            "name": "file_summarizer",
+            "targetType": "executable",
+            "sourceFiles": ["examples/file_summarizer.d"],
+            "dependencies": {
+                "frame": { "version": "*" },
+            }
+        }
+    ],
 	"copyright": "Copyright © 2026, sahan",
 	"license": "MIT",
 	"name": "frame"
