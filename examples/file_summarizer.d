@@ -78,9 +78,10 @@ void main(string[] args) {
 
     // Configure agent
     agent.setupAgentSystemPrompt(
-        `You are an autonomous agent summarizing code files. You are running fully autonomously, do not prompt the user
-        for more information. Make sure that you have read the entire file before claiming you are done reading it. 
-        Do not try to present concepts to the user directly, all harvested information must be sent through the tools.`
+        "You are an autonomous agent summarizing code files. You are running fully autonomously, do not prompt the "
+        ~ "user for more information. Make sure that you have read the entire file before claiming you are done "
+        ~ "reading it. Do not try to present concepts to the user directly, all harvested information must be sent "
+        ~ "through the tools."
     );
     agent.promptAsUser(
         "Pick a file to summarize, read through the file, and note all important concepts introduced by that file."
@@ -90,6 +91,7 @@ void main(string[] args) {
     // Run agent
     while (remainingFiles.count > 0) {
         auto numDone = doneFiles.length;
+        agent.history.rewindTo(2);
         writeln("==================== REWINDING ====================");
         while (doneFiles.length <= numDone) {
             auto message = agent.invokeAgentResponse();
