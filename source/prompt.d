@@ -51,25 +51,6 @@ void printChat(LlamaMessage[] messages, ref string[string] toolIdToParamMap) {
     }
 }
 
-struct HistoryPrinter {
-    LlamaMessage[] *history;
-    string[string] toolCallIdsToParams;
-    size_t printedWatermark;
-}
-
-void printLog(ref HistoryPrinter printer) {
-    auto unprinted = (*printer.history)[printer.printedWatermark .. $];
-    printChat(unprinted, printer.toolCallIdsToParams);
-    printer.printedWatermark = printer.history.length;
-}
-
-void rewindTo(ref HistoryPrinter printer, size_t offset) {
-    if (printer.history.length <= offset) {
-        return;
-    }
-    (*printer.history) = (*printer.history)[0 .. offset];
-    printer.printedWatermark = min(printer.printedWatermark, offset);
-}
 
 /// Put this at the start of the history to provide a system prompt
 LlamaMessage systemPrompt(string prompt) => LlamaMessage(role: "system", content: prompt);

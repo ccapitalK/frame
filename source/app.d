@@ -74,12 +74,12 @@ void main(string[] args) {
 
     auto host = new ModelServer(httpEndpoint("localhost", port));
     auto agent = makeAgent(host, tools);
-    agent.history = [systemPrompt(
+    agent.setupAgentSystemPrompt(
         "You are an autonomous agent summarizing code files. You are running fully autonomously, do not prompt the user for more information. "
         ~ "Make sure that you have read the entire file before claiming you are done reading it. "
         ~ "Do not try to present concepts to the user directly, all harvested information must be sent through the tools."
-    )];
-    agent.history ~= userPrompt(
+    );
+    agent.promptAsUser(
         "Pick a file to summarize, read through the file, and note all important concepts introduced by that file."
         ~ "Always mark files as done with the doneFile tool once you have finished noting concepts for a specific file. "
     );
@@ -91,9 +91,9 @@ void main(string[] args) {
             if (message.isEndOfAgentMessageSequence) {
                 break;
             }
-            agent.printer.printLog();
+            agent.history.printLog();
         }
-        agent.printer.printLog();
+        agent.history.printLog();
     }
 
     foreach (file; concepts.keys) {
