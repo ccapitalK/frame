@@ -7,6 +7,7 @@ import std.file;
 import std.stdio;
 
 import agent_harness.agent;
+import agent_harness.client;
 import agent_harness.prompt;
 import agent_harness.tool;
 
@@ -71,7 +72,8 @@ void main(string[] args) {
         })("doneFile", "Submit that a file has been completely read, with all concepts noted."),
     ];
 
-    auto agent = makeAgent("localhost", port, tools);
+    auto host = new ModelServer(httpEndpoint("localhost", port));
+    auto agent = makeAgent(host, tools);
     agent.history = [systemPrompt(
         "You are an autonomous agent summarizing code files. You are running fully autonomously, do not prompt the user for more information. "
         ~ "Make sure that you have read the entire file before claiming you are done reading it. "
