@@ -94,27 +94,31 @@ class ModelServer {
 }
 
 class GeminiModelServer: ModelServer {
+    string apiKey;
     this(string apiKey) {
         super(httpsEndpoint("generativelanguage.googleapis.com", 443));
-        headerOverrides["x-goog-api-key"] = apiKey;
+        this.apiKey = apiKey;
+        headerOverrides["Authorization"] = "Bearer " ~ apiKey;
+        headerOverrides["Content-Type"] = "application/json";
     }
 
-    override string apiUrl() const => "https://%s:%s/v1/chat/completions";
+    override string apiUrl() const => "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
 
     override bool healthCheck() const {
         auto http = HTTP("https://generativelanguage.googleapis.com/v1beta/models");
         http.method = HTTP.Method.get;
 
-        foreach (kv; headerOverrides.byPair) {
-            http.addRequestHeader(kv[0], kv[1]);
-        }
+        // This endpoint has a different auth header than the openai compatible api
+        http.addRequestHeader("x-goog-api-key", apiKey);
+        // Null sink for data, to not echo
+        http.onReceive = (ubyte[] data) => data.length;
 
         try {
             http.perform();
+            return http.statusLine.code == 200;
         } catch(Exception e) {
             return false;
         }
-        return true;
     }
 }
 
