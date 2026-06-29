@@ -12,11 +12,12 @@ import frame.tool;
 
 class Agent {
     ModelServer host;
-    History history = new History();
+    History history;
     ToolSet toolSet;
 
     this(ModelServer host) {
         this.host = host;
+        this.history = new History();
     }
 }
 
@@ -51,7 +52,12 @@ LlamaMessage promptAsUser(Agent agent, string prompt) {
 }
 
 bool isEndOfAgentMessageSequence(LlamaMessage message) {
-    return message.role == "assistant" && message.content != "" && message.toolCalls == [];
+    bool isAssistant = message.role == "assistant";
+    bool noToolCalls = message.toolCalls == [];
+    // It's done, if there is a message, or if both content and reasoning are empty
+    // (combined with no tool calls, that's a clear end of response chain)
+    bool isDoneMessage = message.content != "" || message.reasoningContent == "";
+    return isAssistant && noToolCalls && isDoneMessage;
 }
 
 /// Default implementation of a standard agent loop, runs till the agent is "done".
