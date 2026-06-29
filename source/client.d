@@ -22,6 +22,7 @@ struct ModelServerEndpoint {
 class ModelServer {
     ModelServerEndpoint endpoint;
     string model;
+    // Used for header based authentication, for openai/gemini endpoints
     string[string] headerOverrides;
     Logger logger;
 
@@ -56,7 +57,11 @@ class ModelServer {
         // TODO: Handle curl exceptions properly, categorize them
         auto http = HTTP(apiUrl());
         http.method = HTTP.Method.get;
+
         http.contentLength = payload.length;
+        foreach (kv; headerOverrides.byPair) {
+            http.addRequestHeader(kv[0], kv[1]);
+        }
 
         http.onSend = (void[] data) {
             auto m = cast(void[]) payload;
