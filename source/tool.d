@@ -1,4 +1,4 @@
-module agent_harness.tools;
+module agent_harness.tool;
 
 import std.algorithm;
 import std.array;

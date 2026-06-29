@@ -1,9 +1,12 @@
 module agent_harness.agent;
 
+import std.logger;
+import std.stdio;
+
 import agent_harness.client;
 import agent_harness.llamacpp_proto;
 import agent_harness.prompt;
-import agent_harness.tools;
+import agent_harness.tool;
 
 // TODO: make this a class?
 struct Agent {
@@ -12,13 +15,15 @@ struct Agent {
     HistoryPrinter printer;
 }
 
-Agent *makeAgent(string url, string port, ToolDef[] tools=[]) {
+Agent *makeAgent(string url, string port, ToolDef[] tools=[], bool enableLogging=false) {
     auto agent = new Agent();
     agent.host = ModelServer(url, port);
     if (!agent.host.healthCheck()) {
         throw new Exception("No healthy host, is your server running?");
     }
-    // agent.host.logger = new FileLogger(stdout, LogLevel.trace);
+    if (enableLogging) {
+        agent.host.logger = new FileLogger(stdout, LogLevel.trace);
+    }
     agent.host.toolSet = tools.makeToolSet();
     agent.printer = HistoryPrinter(&agent.history);
     return agent;

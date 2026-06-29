@@ -8,17 +8,13 @@ import std.stdio;
 
 import agent_harness.agent;
 import agent_harness.prompt;
-import agent_harness.tools;
-
-string[] readFileList(string fileListPath) {
-    return fileListPath.readText().splitter('\n').filter!"a != []".array;
-}
+import agent_harness.tool;
 
 struct Empty {}
 
 struct ViewRange {
     @ToolDoc("File to read from")
-    string fileName;
+    string filename;
     @ToolDoc("Offset to read starting from")
     size_t offset;
 }
@@ -26,55 +22,69 @@ struct ViewRange {
 struct ViewRangeResponse {
     string response;
     size_t actualFileLength;
-    size_t responseLength;
+    size_t[2] responseWindow;
 }
 
 struct AddEntry {
-    @ToolDoc("File to submit summary for")
+    @ToolDoc("File to submit concept against")
     string filename;
-    @ToolDoc("Summary of the file")
-    string summary;
+    @ToolDoc("Concept being introduced")
+    string concept;
+}
+
+struct DoneFile {
+    @ToolDoc("File to claim fully noted")
+    string filename;
 }
 
 void main(string[] args) {
     string port = "12349";
-    auto files = args[1].readFileList();
-    string[string] summaries;
-    auto remainingFiles() => files[].filter!(a => a !in summaries);
-    bool hasSubmitted;
+
+    auto files = args[1].readText().splitter('\n').filter!"a != []".array;
+    string[][string] concepts;
+    auto remainingFiles() => files[].filter!(a => a !in concepts);
+
+    void[0][string] doneFiles;
     auto tools = [
-        simpleToolDef!((Empty _) => files[].filter!(a => a !in summaries).array)
+        simpleToolDef!((Empty _) => remainingFiles.array)
             ("remainingFiles", "Return list of files yet to be summarized"),
         simpleToolDef!((ViewRange req) {
-            writeln(req);
-            enforce(files[].any!(a => a == req.fileName));
-            auto text = req.fileName.readText();
+            enforce(files[].any!(a => a == req.filename));
+            auto text = req.filename.readText();
             enforce(text.length >= req.offset);
             auto end = min(text.length, req.offset + 1024);
             return ViewRangeResponse(
                 text[req.offset .. end],
                 text.length,
-                end - req.offset,
+                [req.offset, end],
             );
         })("viewRange", "View a range of bytes in a file. Limits to at most 1024 in a single query"),
         simpleToolDef!((AddEntry req) {
-            enforce(remainingFiles.any!(a => a == req.filename));
-            summaries[req.filename] = req.summary;
-            hasSubmitted = true;
+            enforce(files.any!(a => a == req.filename));
+            concepts[req.filename] ~= req.concept;
             return "";
-        })("submitSummary", "Submit a summary of a file"),
+        })("addConcept", "Note a concept introduced in a file"),
+        simpleToolDef!((DoneFile req) {
+            enforce(req.filename !in doneFiles);
+            doneFiles[req.filename] = [];
+            return "";
+        })("doneFile", "Submit that a file has been completely read, with all concepts noted."),
     ];
+
     auto agent = makeAgent("localhost", port, tools);
     agent.history = [systemPrompt(
-        "You are an autonomous agent summarizing code files. You are running fully autonomously, do not prompt the user for more information."
+        "You are an autonomous agent summarizing code files. You are running fully autonomously, do not prompt the user for more information. "
+        ~ "Make sure that you have read the entire file before claiming you are done reading it. "
+        ~ "Do not try to present concepts to the user directly, all harvested information must be sent through the tools."
     )];
     agent.history ~= userPrompt(
-        "Pick a file to summarize, read through the file making notes to yourself out loud, then submit a summary of the file. "
+        "Pick a file to summarize, read through the file, and note all important concepts introduced by that file."
+        ~ "Always mark files as done with the doneFile tool once you have finished noting concepts for a specific file. "
     );
     while (remainingFiles.count > 0) {
-        hasSubmitted = false;
-        agent.printer.rewind(2);
-        while (true && !hasSubmitted) {
+        auto numDone = doneFiles.length;
+        writeln("==================== REWINDING ====================");
+        while (doneFiles.length <= numDone) {
             auto message = agent.invokeAgentResponse();
             if (message.isEndOfAgentMessageSequence) {
                 break;
@@ -84,5 +94,12 @@ void main(string[] args) {
         agent.printer.printLog();
     }
 
-    writeln(summaries);
+    foreach (file; concepts.keys) {
+        writeln("# ", file);
+        writeln();
+        foreach (concept; concepts[file]) {
+            writeln("- ", concept);
+        }
+        writeln();
+    }
 }

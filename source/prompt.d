@@ -63,7 +63,7 @@ void printLog(ref HistoryPrinter printer) {
     printer.printedWatermark = printer.history.length;
 }
 
-void rewind(ref HistoryPrinter printer, size_t offset) {
+void rewindTo(ref HistoryPrinter printer, size_t offset) {
     if (printer.history.length <= offset) {
         return;
     }

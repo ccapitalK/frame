@@ -9,7 +9,7 @@ import std.stdio;
 import asdf;
 
 import agent_harness.llamacpp_proto;
-import agent_harness.tools;
+import agent_harness.tool;
 
 // TODO: Enforce https if not localhost
 string apiUrl(ModelServer host) =>
