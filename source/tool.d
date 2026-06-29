@@ -1,4 +1,4 @@
-module agent_harness.tool;
+module frame.tool;
 
 import std.algorithm;
 import std.array;
@@ -7,7 +7,7 @@ import std.typecons;
 
 import asdf;
 
-import agent_harness.llamacpp_proto;
+import frame.llamacpp_proto;
 
 struct ToolDef {
     LlamaToolDef apiToolDef;

@@ -1,10 +1,10 @@
-module agent_harness.prompt;
+module frame.prompt;
 
 import std.algorithm : min;
 import std.format;
 import std.stdio;
 
-import agent_harness.llamacpp_proto;
+import frame.llamacpp_proto;
 
 enum Color { red = 31, green = 32, yellow = 33, blue = 34, magenta = 35, cyan = 36 }
 

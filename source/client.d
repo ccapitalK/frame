@@ -1,4 +1,4 @@
-module agent_harness.client;
+module frame.client;
 
 import std.array;
 import std.conv;
@@ -9,8 +9,8 @@ import std.stdio;
 
 import asdf;
 
-import agent_harness.llamacpp_proto;
-import agent_harness.tool;
+import frame.llamacpp_proto;
+import frame.tool;
 
 // TODO: Enforce https if not localhost
 

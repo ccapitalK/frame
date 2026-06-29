@@ -1,14 +1,14 @@
-module agent_harness.agent;
+module frame.agent;
 
 import std.exception;
 import std.logger;
 import std.stdio;
 
-import agent_harness.client;
-import agent_harness.history;
-import agent_harness.llamacpp_proto;
-import agent_harness.prompt;
-import agent_harness.tool;
+import frame.client;
+import frame.history;
+import frame.llamacpp_proto;
+import frame.prompt;
+import frame.tool;
 
 class Agent {
     ModelServer host;

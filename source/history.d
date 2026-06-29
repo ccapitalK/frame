@@ -1,9 +1,9 @@
-module agent_harness.history;
+module frame.history;
 
 import std.algorithm;
 
-import agent_harness.llamacpp_proto;
-import agent_harness.prompt;
+import frame.llamacpp_proto;
+import frame.prompt;
 
 class History {
     LlamaMessage[] messages;

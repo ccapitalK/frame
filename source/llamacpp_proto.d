@@ -1,4 +1,4 @@
-module agent_harness.llamacpp_proto;
+module frame.llamacpp_proto;
 
 import asdf;
 

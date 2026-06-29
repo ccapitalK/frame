@@ -1,4 +1,4 @@
-module agent_harness.app;
+module frame.app;
 
 import std.array;
 import std.algorithm;
@@ -7,10 +7,10 @@ import std.exception;
 import std.file;
 import std.stdio;
 
-import agent_harness.agent;
-import agent_harness.client;
-import agent_harness.prompt;
-import agent_harness.tool;
+import frame.agent;
+import frame.client;
+import frame.prompt;
+import frame.tool;
 
 struct Empty {}
 

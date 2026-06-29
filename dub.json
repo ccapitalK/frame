@@ -1,5 +1,5 @@
 {
-	"description": "A minimal D application.",
+	"description": "A minimal llm harness library for D.",
 	"dependencies": {
 		"asdf": "~>0.8.0"
 	},
@@ -8,5 +8,5 @@
 	],
 	"copyright": "Copyright © 2026, sahan",
 	"license": "MIT",
-	"name": "agent_harness"
+	"name": "frame"
 }
