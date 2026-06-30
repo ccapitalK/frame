@@ -7,11 +7,30 @@ import std.typecons;
 
 import asdf;
 
+import frame.history;
 import frame.llamacpp_proto;
+
+class ToolException: Exception {
+    this(string message) {
+        super(message);
+    }
+}
+
+class TimeTravelException: Exception {
+    this() {
+        super("Program halted by non-linear passage of time");
+    }
+}
 
 struct ToolDef {
     LlamaToolDef apiToolDef;
+    bool mustBeLastInDispatch = false;
     string delegate(string) method;
+}
+
+ToolDef setMustBeLastInDispatch(ToolDef def) {
+    def.mustBeLastInDispatch = true;
+    return def;
 }
 
 struct ToolSet {
@@ -46,29 +65,39 @@ private string delegate(string) wrapFuncWithJson(alias f)() if (arity!f == 1) {
     };
 }
 
-void handleToolResponses(ref LlamaMessage[] history, ToolSet toolSet) {
-    auto lastMessage = history[$ - 1];
+void handleToolResponses(History history, ToolSet toolSet) {
+    auto lastMessage = history.messages[$ - 1];
     if (lastMessage.toolCalls == []) {
         return;
     }
-    foreach (call; lastMessage.toolCalls) {
+    foreach (i, call; lastMessage.toolCalls) {
         auto funcName = call.function_.name;
         auto argsJson = call.function_.argumentsJson;
         string resp;
         try {
             auto def = funcName in toolSet.tools;
             if (!def) {
-                throw new Exception("No tool with that name");
+                throw new ToolException("No tool with that name");
+            }
+            if (def.mustBeLastInDispatch && i - 1 < lastMessage.toolCalls.length) {
+                throw new ToolException("Must be last tool in parallel tool call dispatch");
             }
             auto method = def.method;
             resp = method(argsJson);
+        } catch(TimeTravelException e) {
+            // Time travel tool invoked. The tool has changed the history, and is responsible for keeping it coherent
+            break;
+        } catch(ToolException e) {
+            // We trust these to be exposed to the llm  
+            resp = e.msg;
         } catch(Exception e) {
             resp = "Internal error";
         }
         // TODO: Handle errors
-        history ~= [
+        history.messages ~= [
             LlamaMessage(role : "tool", toolCallId: call.id, content: resp)
         ];
+        history.printLog();
     }
 }
 

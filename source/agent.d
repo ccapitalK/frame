@@ -42,12 +42,14 @@ LlamaMessage invokeAgentResponse(Agent agent) {
     auto toolSet = agent.toolSet;
     auto message = agent.host.sendReq(agent.history.messages, toolSet.apiToolDefs).choices[0].message;
     agent.history.messages ~= message;
-    agent.history.messages.handleToolResponses(toolSet);
+    agent.history.printLog();
+    agent.history.handleToolResponses(toolSet);
     return message;
 }
 
 LlamaMessage promptAsUser(Agent agent, string prompt) {
     agent.history.messages ~= userPrompt(prompt);
+    agent.history.printLog();
     return agent.invokeAgentResponse();
 }
 
