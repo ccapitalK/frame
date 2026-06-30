@@ -83,7 +83,7 @@ void main(string[] args) {
         ~ "reading it. Do not try to present concepts to the user directly, all harvested information must be sent "
         ~ "through the tools."
     );
-    agent.promptAsUser(
+    agent.history.messages ~= userPrompt(
         "Pick a file to summarize, read through the file, and note all important concepts introduced by that file."
         ~ "Always mark files as done with the doneFile tool once you have finished noting concepts for a specific file. "
     );
