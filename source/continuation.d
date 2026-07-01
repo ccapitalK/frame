@@ -17,7 +17,7 @@ struct CallCcReq {
 
 struct CallCcResp {
     string restoreMessage;
-    string continuationPurpose;
+    string associatedTask;
     size_t restoreCount;
 }
 
@@ -59,8 +59,9 @@ class ContinuationManager {
                 return CallCcResp("Initial", req.purpose, 0);
             })(
                 "callCCPrompts",
-                "Create a continuation, that may be restored later. Must be last tool invocation ok assistant message",
-            ),
+                "Create a continuation, that may be restored later. Must be last tool invocation in assistant message",
+            )
+                .setMustBeLastInDispatch,
             simpleToolDef!((RestoreContinuationReq req) {
                 enforce(req.summary != "", new ToolException("Can't post empty summary"));
                 auto continuation = req.name in activeContinuations;
@@ -83,7 +84,7 @@ class ContinuationManager {
                 return "";
             })(
                 "restoreContinuation",
-                "Restore a named continuation, with a summary of all important information after it to extract",
+                "Restore a named continuation, with a full summary of all important information after it to extract",
             ),
         ];
     }

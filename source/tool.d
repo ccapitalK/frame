@@ -2,6 +2,7 @@ module frame.tool;
 
 import std.algorithm;
 import std.array;
+import std.exception;
 import std.traits;
 import std.typecons;
 
@@ -36,20 +37,25 @@ ToolDef setMustBeLastInDispatch(ToolDef def) {
 struct ToolSet {
     LlamaToolDef[] apiToolDefs;
     ToolDef[string] tools;
-}
 
-ToolSet makeToolSet(ToolDef[] defs) {
-    ToolDef[string] tools;
-    LlamaToolDef[] apiToolDefs;
-    foreach (def; defs) {
+    void addTool(ToolDef def) {
         auto name = def.apiToolDef.function_.name;
+        enforce(name !in tools);
         tools[name] = def;
         apiToolDefs ~= def.apiToolDef;
     }
-    return ToolSet(
-        apiToolDefs: apiToolDefs,
-        tools: tools,
-    );
+
+    void addTools(ToolDef[] defs) {
+        foreach (def; defs) {
+            addTool(def);
+        }
+    }
+}
+
+ToolSet makeToolSet(ToolDef[] defs) {
+    ToolSet toolSet;
+    toolSet.addTools(defs);
+    return toolSet;
 }
 
 private string delegate(string) wrapFuncWithJson(alias f)() if (arity!f == 1) {
@@ -79,7 +85,7 @@ void handleToolResponses(History history, ToolSet toolSet) {
             if (!def) {
                 throw new ToolException("No tool with that name");
             }
-            if (def.mustBeLastInDispatch && i - 1 < lastMessage.toolCalls.length) {
+            if (def.mustBeLastInDispatch && i + 1 < lastMessage.toolCalls.length) {
                 throw new ToolException("Must be last tool in parallel tool call dispatch");
             }
             auto method = def.method;
