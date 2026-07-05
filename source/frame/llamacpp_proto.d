@@ -9,10 +9,24 @@ struct LlamaToolFunctionCall {
     string argumentsJson;
 }
 
+class ExtraContent {
+    static class GoogleExtraContent {
+        @serdeKeys("thought_signature")
+        string thoughtSignature;
+    }
+
+    @serdeOptional
+    GoogleExtraContent google;
+}
+
 struct LlamaToolCall {
     string type;
 
     string id;
+
+    @serdeOptional
+    @serdeKeys("extra_content")
+    ExtraContent extraContent;
 
     @serdeKeys("function")
     LlamaToolFunctionCall function_;
@@ -136,10 +150,26 @@ unittest {
                 ~ ` user mentioned Sydney, I need to call that function with the city set to Sydney. I'll make sure`
                 ~ ` to format the tool call correctly within the XML tags.` ~ '\n',
                 toolCallId: "",
-                [LlamaToolCall("function", "iPI6WsqO9K1rzTKlu1MLOz1BeEMOz8Ef",
+                [LlamaToolCall("function", "iPI6WsqO9K1rzTKlu1MLOz1BeEMOz8Ef", null,
                     LlamaToolFunctionCall("get_temperature", "{\"city\": \"Sydney\"}"))]
             )
         )
     ]);
     assert(resp1.deserialize!LlamaResponse == expected2);
+
+    // Regression test, deserializing this shouldn't crash
+    enum reg1 = `{"choices":[{"finish_reason":"tool_calls","index":0,"message":{"content":"I am an AI assistant `
+        ~ `designed to interact with you through this agent harness.\n\n### Who I am and what I see\nI am a large `
+            ~ `language model trained by Google. Regarding what I \"see,\" I do not have eyes or access to your `
+            ~ `physical environment. I only \"see\" the text and data you provide in this conversation window. I am `
+            ~ `aware of the tools that have been made available to me by the system configuration.\n\n### Tools I can `
+            ~ "call\\nI have access to the following tools:\\n*   **`add(a, b)`**: Adds two numbers together.\\n*   **"
+            ~ "`sub(a, b)`**: Subtracts the second number from the "
+            ~ `first.\n\n---\n\n### Testing the tools\n\nI will now perform a test calculation for each tool.\n\n`
+            ~ `**Test 1: Addition**\nI will add 15 and 27.\n","role":"assistant","tool_calls":[{"extra_content":`
+            ~ `{"google":{"thought_signature":"REDACTED_TEST_DATA"}},`
+            ~ `"function":{"arguments":"{\"a\":15,\"b\":27}","name":"add"},"id":"bcBxLAM6","type":`
+            ~ `"function"}]}}],"created":1783244216,"id":"tyVKatSQF4T_juMPxPPJmQo","model":"gemini-3.1-flash-lite",`
+            ~ `"object":"chat.completion","usage":{"completion_tokens":198,"prompt_tokens":161,"total_tokens":359}}`;
+    reg1.deserialize!LlamaResponse;
 }
