@@ -34,6 +34,9 @@ struct LlamaToolCall {
 
 struct LlamaMessage {
     string role;
+
+    @serdeOptional
+    @serdeIgnoreOutIf!"a == []"
     string content;
 
     @serdeOptional
