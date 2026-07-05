@@ -95,9 +95,10 @@ class ModelServer {
 
 class GeminiModelServer: ModelServer {
     string apiKey;
-    this(string apiKey) {
+    this(string apiKey, string model="gemini-3.5-flash") {
         super(httpsEndpoint("generativelanguage.googleapis.com", 443));
         this.apiKey = apiKey;
+        this.model = model;
         headerOverrides["Authorization"] = "Bearer " ~ apiKey;
         headerOverrides["Content-Type"] = "application/json";
     }
