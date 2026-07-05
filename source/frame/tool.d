@@ -40,7 +40,7 @@ struct ToolSet {
 
     void addTool(ToolDef def) {
         auto name = def.apiToolDef.function_.name;
-        enforce(name !in tools);
+        enforce(name !in tools, "Tools must have unique names");
         tools[name] = def;
         apiToolDefs ~= def.apiToolDef;
     }
