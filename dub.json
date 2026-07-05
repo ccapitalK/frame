@@ -1,11 +1,11 @@
 {
-	"description": "A minimal llm harness library for D.",
-	"dependencies": {
-		"asdf": "~>0.8.0"
-	},
-	"authors": [
-		"sahan"
-	],
+    "description": "A minimal llm harness library for D.",
+    "dependencies": {
+        "asdf": "~>0.8.0"
+    },
+    "authors": [
+        "sahan"
+    ],
     "targetType": "library",
     "subPackages": [
         {
@@ -17,7 +17,7 @@
             }
         }
     ],
-	"copyright": "Copyright © 2026, sahan",
-	"license": "MIT",
-	"name": "frame"
+    "copyright": "Copyright © 2026, sahan",
+    "license": "MIT",
+    "name": "frame"
 }

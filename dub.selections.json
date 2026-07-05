@@ -1,9 +1,9 @@
 {
-	"fileVersion": 1,
-	"versions": {
-		"asdf": "0.8.0",
-		"mir-algorithm": "3.22.4",
-		"mir-core": "1.7.4",
-		"silly": "1.1.1"
-	}
+    "fileVersion": 1,
+    "versions": {
+        "asdf": "0.8.0",
+        "mir-algorithm": "3.22.4",
+        "mir-core": "1.7.4",
+        "silly": "1.1.1"
+    }
 }
