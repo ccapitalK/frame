@@ -14,16 +14,26 @@ import frame.tool;
 
 // TODO: Enforce https if not localhost
 
+enum OPENAI_API_PATH = "/v1/chat/completions";
+
 struct ModelServerEndpoint {
     string proto;
     string host;
     string port;
+    string path;
 
-    this(string proto, string host, ushort port) {
+    this(string proto, string host, ushort port, string path = OPENAI_API_PATH) {
         this.proto = proto;
         this.host = host;
         this.port = port.to!string;
+        if (path.length && path[0] == '/') {
+            path = path[1 .. $];
+        }
+        this.path = path;
     }
+
+    // TODO(ccapitalk): This is llamacpp-server specific, move into subclass
+    string apiUrl() const => format!"%s://%s:%s/%s"(proto, host, port, path);
 }
 
 class ModelServer {
@@ -36,26 +46,22 @@ class ModelServer {
 
     this(ModelServerEndpoint endpoint) {
         this.endpoint = endpoint;
+        headerOverrides["Content-Type"] = "application/json";
     }
 
-    // TODO(ccapitalk): This is llamacpp-server specific, move into subclass
-    protected string apiUrl() const =>
-        format!"%s://%s:%s/v1/chat/completions"(endpoint.proto, endpoint.host, endpoint.port);
+    protected string apiUrl() const => endpoint.apiUrl;
 
     Logger getLogger() => logger is null ? stdThreadLocalLog : logger;
 
-    // TODO(ccapitalk): Subclass, overrides for the different providers
-    bool healthCheck() const {
-        auto url = format!"%s://%s:%s/props"(endpoint.proto, endpoint.host, endpoint.port);
-        try {
-            get(url);
-        } catch(CurlException exception) {
-            return false;
-        }
-        return true;
+    /// Checks if the server is up.
+    bool healthCheck() const => true;
+
+    /// Set up OpenAI style authentication, using a HTTP bearer token
+    void setApiKey(string apiKey) {
+        headerOverrides["Authorization"] = "Bearer " ~ apiKey;
     }
 
-    LlamaResponse sendReq(LlamaMessage[] history, LlamaToolDef[] apiToolDefs=[]) {
+    LlamaResponse sendReq(LlamaMessage[] history, LlamaToolDef[] apiToolDefs = []) {
         auto payload = LlamaReq(
             model: model,
             reasoningEffort: reasoningEffort,
@@ -78,15 +84,14 @@ class ModelServer {
         http.onSend = (void[] data) {
             auto m = cast(void[]) payload;
             size_t len = m.length > data.length ? data.length : m.length;
-            if (len == 0) return len;
+            if (len == 0) {
+                return len;
+            }
             data[0 .. len] = m[0 .. len];
-            payload = payload[len..$];
+            payload = payload[len .. $];
             return len;
         };
-        http.onReceive = (ubyte[] data) {
-            builder.put(data);
-            return data.length;
-        };
+        http.onReceive = (ubyte[] data) { builder.put(data); return data.length; };
 
         http.perform();
 
@@ -96,17 +101,31 @@ class ModelServer {
     }
 }
 
-class GeminiModelServer: ModelServer {
-    string apiKey;
-    this(string apiKey, string model="gemini-3.5-flash") {
-        super(httpsEndpoint("generativelanguage.googleapis.com", 443));
-        this.apiKey = apiKey;
+class LlamaServerModelServer : ModelServer {
+    this(ModelServerEndpoint endpoint, string model = "") {
+        super(endpoint);
         this.model = model;
-        headerOverrides["Authorization"] = "Bearer " ~ apiKey;
-        headerOverrides["Content-Type"] = "application/json";
     }
 
-    override string apiUrl() const => "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+    override bool healthCheck() const {
+        auto url = format!"%s://%s:%s/props"(endpoint.proto, endpoint.host, endpoint.port);
+        try {
+            get(url);
+        } catch (CurlException exception) {
+            return false;
+        }
+        return true;
+    }
+}
+
+class GeminiModelServer : ModelServer {
+    string apiKey;
+    this(string apiKey, string model = "gemini-3.5-flash") {
+        super(httpsEndpoint("generativelanguage.googleapis.com", 443, "/v1beta/openai/chat/completions"));
+        this.apiKey = apiKey;
+        this.model = model;
+        setApiKey(apiKey);
+    }
 
     override bool healthCheck() const {
         auto http = HTTP("https://generativelanguage.googleapis.com/v1beta/models");
@@ -120,11 +139,13 @@ class GeminiModelServer: ModelServer {
         try {
             http.perform();
             return http.statusLine.code == 200;
-        } catch(Exception e) {
+        } catch (Exception e) {
             return false;
         }
     }
 }
 
-ModelServerEndpoint httpEndpoint(string host, ushort port) => ModelServerEndpoint("http", host, port);
-ModelServerEndpoint httpsEndpoint(string host, ushort port) => ModelServerEndpoint("https", host, port);
+ModelServerEndpoint httpEndpoint(string host, ushort port = 80, string path = OPENAI_API_PATH)
+    => ModelServerEndpoint("http", host, port, path);
+ModelServerEndpoint httpsEndpoint(string host, ushort port = 443, string path = OPENAI_API_PATH)
+    => ModelServerEndpoint("https", host, port, path);

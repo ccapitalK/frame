@@ -73,7 +73,10 @@ void main(string[] args) {
 
     // Setup agent
     ushort port = args.length > 2 ? args[1].to!ushort : 12_349;
-    auto host = new ModelServer(httpEndpoint("localhost", port));
+    auto hostname = args.length > 3 ? args[2] : "localhost";
+    auto proto = hostname == "localhost" ? "http" : "https";
+    auto apiPath = args.length > 4 ? args[3] : OPENAI_API_PATH;
+    auto host = new ModelServer(ModelServerEndpoint(proto, hostname, port, apiPath));
     auto agent = makeAgent(host, tools);
 
     // Configure agent
