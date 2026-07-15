@@ -25,6 +25,7 @@ struct LlamaToolCall {
     string id;
 
     @serdeOptional
+    @serdeIgnoreOutIf!"a is null"
     @serdeKeys("extra_content")
     ExtraContent extraContent;
 
@@ -83,8 +84,15 @@ struct LlamaReq {
     @serdeIgnoreOutIf!"a == []"
     string model;
     double temperature = 0;
+
+    @serdeOptional
+    @serdeIgnoreOutIf!"a == []"
+    @serdeKeys("reasoning_effort")
+    string reasoningEffort;
+
     @serdeOptional
     bool stream;
+
     @serdeKeys("parallel_tool_calls")
     bool parallelToolCalls = true;
     LlamaMessage[] messages;
@@ -113,7 +121,7 @@ unittest {
       "properties":{"city":{"type":"string", "description":  "The name of the city"}}}}}],
   "temperature": 0
 }`;
-    auto expected1 = LlamaReq("", 0, false, true, [
+    auto expected1 = LlamaReq("", 0, "", false, true, [
         LlamaMessage("user", "temp in Sydney?", "", "", [])
     ], [
         LlamaToolDef(

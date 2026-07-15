@@ -29,6 +29,7 @@ struct ModelServerEndpoint {
 class ModelServer {
     ModelServerEndpoint endpoint;
     string model;
+    string reasoningEffort;
     // Used for header based authentication, for openai/gemini endpoints
     string[string] headerOverrides;
     Logger logger;
@@ -57,9 +58,11 @@ class ModelServer {
     LlamaResponse sendReq(LlamaMessage[] history, LlamaToolDef[] apiToolDefs=[]) {
         auto payload = LlamaReq(
             model: model,
+            reasoningEffort: reasoningEffort,
             messages: history,
             tools: apiToolDefs,
         ).serializeToJson;
+        getLogger().tracef("Sending v1 completions request: %s", payload);
 
         // TODO: Streaming fetch
         auto builder = appender!(ubyte[]);
