@@ -21,7 +21,7 @@ class Agent {
     }
 }
 
-Agent makeAgent(ModelServer server, ToolDef[] tools=[], bool enableLogging=false) {
+Agent makeAgent(ModelServer server, ToolDef[] tools = [], bool enableLogging = false) {
     auto agent = new Agent(server);
     if (!agent.host.healthCheck()) {
         throw new Exception("No healthy host, is your server running?");
@@ -40,7 +40,11 @@ void setupAgentSystemPrompt(Agent agent, string prompt) {
 
 LlamaMessage invokeAgentResponse(Agent agent) {
     auto toolSet = agent.toolSet;
-    auto message = agent.host.sendReq(agent.history.messages, toolSet.apiToolDefs).choices[0].message;
+    auto resp = agent.host.sendReq(agent.history.messages, toolSet.apiToolDefs);
+    if (resp.error !is null) {
+        throw new SessionException("Error: " ~ resp.error.message);
+    }
+    auto message = resp.choices[0].message;
     agent.history.messages ~= message;
     agent.history.printLog();
     agent.history.handleToolResponses(toolSet);
@@ -64,7 +68,7 @@ bool isEndOfAgentMessageSequence(LlamaMessage message) {
 
 /// Default implementation of a standard agent loop, runs till the agent is "done".
 void runUntilToolUsesAreDone(Agent agent) {
-    while(true) {
+    while (true) {
         auto message = agent.invokeAgentResponse();
         if (message.isEndOfAgentMessageSequence) {
             break;

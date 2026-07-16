@@ -12,6 +12,12 @@ import asdf;
 import frame.llamacpp_proto;
 import frame.tool;
 
+class SessionException : Exception {
+    this(string message) {
+        super(message);
+    }
+}
+
 // TODO: Enforce https if not localhost
 
 enum OPENAI_API_PATH = "/v1/chat/completions";
@@ -32,7 +38,6 @@ struct ModelServerEndpoint {
         this.path = path;
     }
 
-    // TODO(ccapitalk): This is llamacpp-server specific, move into subclass
     string apiUrl() const => format!"%s://%s:%s/%s"(proto, host, port, path);
 }
 
@@ -59,6 +64,10 @@ class ModelServer {
     /// Set up OpenAI style authentication, using a HTTP bearer token
     void setApiKey(string apiKey) {
         headerOverrides["Authorization"] = "Bearer " ~ apiKey;
+    }
+
+    protected LlamaResponse deserializeResp(string str) {
+        return str.deserialize!LlamaResponse;
     }
 
     LlamaResponse sendReq(LlamaMessage[] history, LlamaToolDef[] apiToolDefs = []) {
@@ -97,7 +106,7 @@ class ModelServer {
 
         auto str = cast(string) builder.data().idup;
         getLogger().tracef("Received response: %s", str);
-        return str.deserialize!LlamaResponse;
+        return deserializeResp(str);
     }
 }
 
@@ -143,6 +152,35 @@ class GeminiModelServer : ModelServer {
             return false;
         }
     }
+
+    // Gemini has a crazy quirk, where the openai compatible endpoint returns an array of errors
+    // instead of an error
+    override LlamaResponse deserializeResp(string str) {
+        try {
+            return str.deserialize!LlamaResponse;
+        } catch (SerdeException e) {
+            auto resps = str.readGeminiErrorArray;
+            if (resps == []) {
+                throw new SessionException("Empty str returned");
+            }
+            return resps[0];
+        }
+    }
+}
+
+private LlamaResponse[] readGeminiErrorArray(string message) => message.deserialize!(LlamaResponse[]);
+
+unittest {
+    auto regr1 = `[{
+      "error": {
+        "code": 404,
+        "message": "models/test-not-found is not found for API version v1main, or is not supported for `
+        ~ `generateContent. Call ModelService.ListModels to see the list of available models and `
+        ~ `their supported methods.",
+        "status": "NOT_FOUND"
+      }
+    }]`;
+    assert(regr1.readGeminiErrorArray().length == 1);
 }
 
 ModelServerEndpoint httpEndpoint(string host, ushort port = 80, string path = OPENAI_API_PATH)

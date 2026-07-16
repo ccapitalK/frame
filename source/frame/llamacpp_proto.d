@@ -1,6 +1,7 @@
 module frame.llamacpp_proto;
 
 import asdf;
+import mir.algebraic;
 
 struct LlamaToolFunctionCall {
     string name;
@@ -104,23 +105,71 @@ struct LlamaResponseChoice {
     LlamaMessage message;
 }
 
+class LlamaResponseError {
+    @serdeOptional
+    string message;
+
+    @serdeOptional
+    string type;
+
+    @serdeOptional
+    string param;
+
+    /// Either a string or an int, depending on api
+    @serdeOptional
+    Variant!(long, string) code;
+
+    this() {}
+
+    this(string message, string type, string param, string code) {
+        this.message = message;
+        this.type = type;
+        this.param = param;
+        this.code = code;
+    }
+
+    override bool opEquals(const Object o) const nothrow pure => opEquals(cast(LlamaResponseError) o);
+
+    bool opEquals(const LlamaResponseError other) const @safe nothrow pure {
+        if (other is null) {
+            return false;
+        }
+        return other.message == message &&
+            other.type == type &&
+            other.param == param &&
+            other.code == code;
+    }
+
+    override size_t toHash() const @safe nothrow pure {
+        return message.hashOf
+            .hashOf(type.hashOf)
+            .hashOf(param.hashOf)
+            .hashOf(code.hashOf);
+    }
+}
+
 struct LlamaResponse {
+    @serdeOptional
     LlamaResponseChoice[] choices;
+    // These are exceptional, so we gc alloc these, and don't reserve space for them inline
+    @serdeOptional
+    @serdeIgnoreOutIf!"a is null"
+    LlamaResponseError error;
 }
 
 unittest {
     import std.stdio;
 
     auto req1 = `{
-  "messages": [{"role":"user","content":"temp in Sydney?"}],
-  "parallel_tool_calls": true,
-  "tools": [{"type":"function","function":{
-    "name":"get_temperature",
-    "description": "Get the current temperature for a city",
-    "parameters":{"type":"object","required":["city"],
-      "properties":{"city":{"type":"string", "description":  "The name of the city"}}}}}],
-  "temperature": 0
-}`;
+      "messages": [{"role":"user","content":"temp in Sydney?"}],
+      "parallel_tool_calls": true,
+      "tools": [{"type":"function","function":{
+        "name":"get_temperature",
+        "description": "Get the current temperature for a city",
+        "parameters":{"type":"object","required":["city"],
+          "properties":{"city":{"type":"string", "description":  "The name of the city"}}}}}],
+      "temperature": 0
+    }`;
     auto expected1 = LlamaReq("", 0, "", false, true, [
         LlamaMessage("user", "temp in Sydney?", "", "", [])
     ], [
@@ -167,6 +216,21 @@ unittest {
         )
     ]);
     assert(resp1.deserialize!LlamaResponse == expected2);
+    auto errorResp = `{
+      "error": {
+        "message": "You exceeded your current quota, please check ...",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "insufficient_quota"
+      }
+    }`;
+    auto expected3 = LlamaResponse(error: new LlamaResponseError(
+        message: "You exceeded your current quota, please check ...",
+        type: "insufficient_quota",
+        param: "",
+        code: "insufficient_quota",
+    ));
+    assert(errorResp.deserialize!LlamaResponse == expected3);
 
     // Regression test, deserializing this shouldn't crash
     enum reg1 = `{"choices":[{"finish_reason":"tool_calls","index":0,"message":{"content":"I am an AI assistant `
