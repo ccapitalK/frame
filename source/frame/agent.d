@@ -42,7 +42,7 @@ LlamaMessage invokeAgentResponse(Agent agent) {
     auto toolSet = agent.toolSet;
     auto resp = agent.host.sendReq(agent.history.messages, toolSet.apiToolDefs);
     if (resp.error !is null) {
-        throw new SessionException("Error: " ~ resp.error.message);
+        throw new SessionException("Error: " ~ resp.error.message, resp.error.extractKind);
     }
     auto message = resp.choices[0].message;
     agent.history.messages ~= message;

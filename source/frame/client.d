@@ -1,6 +1,7 @@
 module frame.client;
 
 import std.array;
+import std.algorithm : canFind;
 import std.conv;
 import std.format;
 import std.logger;
@@ -12,10 +13,76 @@ import asdf;
 import frame.llamacpp_proto;
 import frame.tool;
 
+enum SessionExceptionKind {
+    general,
+    conversationTooLong,
+    badAuth,
+    unknownModel,
+    insufficientQuota,
+}
+
 class SessionException : Exception {
-    this(string message) {
+    SessionExceptionKind kind;
+    this(string message, SessionExceptionKind kind = SessionExceptionKind.general) {
         super(message);
+        this.kind = kind;
     }
+}
+
+SessionExceptionKind extractKind(LlamaResponseError error) {
+    // OpenAi
+    if (error.type == "invalid_request_error" && error.code == "context_length_exceeded") {
+        return SessionExceptionKind.conversationTooLong;
+    }
+    // Llamacpp server
+    if (error.code == 400 && error.type == "exceed_context_size_error") {
+        return SessionExceptionKind.conversationTooLong;
+    }
+    // Gemini server (Haven't actually confirmed this one, can't trigger on free tier)
+    if (error.code == 400 && error.message.canFind("exceeds the maximum number of tokens")) {
+        return SessionExceptionKind.conversationTooLong;
+    }
+
+    if (error.code == 401 || error.code == "401") {
+        return SessionExceptionKind.badAuth;
+    }
+    if (error.code == 404 || error.code == "404") {
+        return SessionExceptionKind.unknownModel;
+    }
+    if (error.code == 429) {
+        return SessionExceptionKind.insufficientQuota;
+    }
+    return SessionExceptionKind.general;
+}
+
+unittest {
+    auto llamaCppTooLong = (`{"error":{"code":400,"message":"request (333307 tokens) exceeds the available `
+        ~ `context size (32768 tokens), try increasing it","type":"exceed_context_size_error",`
+        ~ `"n_prompt_tokens":333307,"n_ctx":32768}}`).deserialize!LlamaResponse;
+    assert(llamaCppTooLong.error.extractKind == SessionExceptionKind.conversationTooLong);
+    auto geminiInvalidModelName = (`{
+      "error": {
+        "code": 404,
+        "message": "models/test-not-found is not found for API version v1main, or is not supported for `
+        ~ `generateContent. Call ModelService.ListModels to see the list of available models and `
+        ~ `their supported methods.",
+        "status": "NOT_FOUND"
+      }
+    }`).deserialize!LlamaResponse;
+    assert(geminiInvalidModelName.error.extractKind == SessionExceptionKind.unknownModel);
+    auto geminiInsufficientQuota = (`{
+      "error": {
+        "code": 429,
+        "message": "You exceeded your current quota, please check your plan and billing details. For `
+        ~ `more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. `
+        ~ `To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for `
+        ~ `metric: generativelanguage.googleapis.com/generate_content_free_tier_input_token_count, `
+        ~ `limit: 250000, model: gemini-3.1-flash-lite\nPlease retry in 55.460643341s.",
+        "status": "RESOURCE_EXHAUSTED",
+        "details": []
+      }
+    }`).deserialize!LlamaResponse;
+    assert(geminiInsufficientQuota.error.extractKind == SessionExceptionKind.insufficientQuota);
 }
 
 // TODO: Enforce https if not localhost
