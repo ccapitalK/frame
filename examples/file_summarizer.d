@@ -43,15 +43,15 @@ void main(string[] args) {
     // Setup tools
     auto files = args[1].readText().splitter('\n').filter!"a != []".array;
     string[][string] concepts;
-    auto remainingFiles() => files[].filter!(a => a !in concepts);
     void[0][string] doneFiles;
+    auto remainingFiles() => files[].filter!(a => a !in doneFiles);
     auto tools = [
         simpleToolDef!((Empty _) => remainingFiles.array)
             ("remainingFiles", "Return list of files yet to be summarized"),
         simpleToolDef!((ViewRange req) {
-            enforce(files[].any!(a => a == req.filename));
+            enforce(files[].any!(a => a == req.filename), new ToolException("Not in file set"));
             auto text = req.filename.readText();
-            enforce(text.length >= req.offset);
+            enforce(text.length >= req.offset, new ToolException("Tried to read past end"));
             auto end = min(text.length, req.offset + 1024);
             return ViewRangeResponse(
                 text[req.offset .. end],
@@ -60,12 +60,13 @@ void main(string[] args) {
             );
         })("viewRange", "View a range of bytes in a file. Limits to at most 1024 in a single query"),
         simpleToolDef!((AddEntry req) {
-            enforce(files.any!(a => a == req.filename));
+            enforce(files.any!(a => a == req.filename), new ToolException("Not in files list"));
             concepts[req.filename] ~= req.concept;
             return "";
         })("addConcept", "Note a concept introduced in a file"),
         simpleToolDef!((DoneFile req) {
-            enforce(req.filename !in doneFiles);
+            enforce(req.filename in concepts, new ToolException("No concepts have been marked"));
+            enforce(req.filename !in doneFiles, new ToolException("File is already marked done"));
             doneFiles[req.filename] = [];
             return "";
         })("doneFile", "Submit that a file has been completely read, with all concepts noted."),
@@ -88,6 +89,7 @@ void main(string[] args) {
     );
     agent.history.messages ~= userPrompt(
         "Pick a file to summarize, read through the file, and note all important concepts introduced by that file."
+        ~ "You MUST mark at least one concept for a file before marking it done. "
         ~ "Always mark files as done with the doneFile tool once you have finished noting concepts for a specific file. "
     );
 
