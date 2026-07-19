@@ -38,7 +38,7 @@ void setupAgentSystemPrompt(Agent agent, string prompt) {
     agent.history.messages = [systemPrompt(prompt)];
 }
 
-LlamaMessage invokeAgentResponse(Agent agent) {
+LlamaMessage invokeAgentResponse(Agent agent, bool printOutput = true) {
     auto toolSet = agent.toolSet;
     auto resp = agent.host.sendReq(agent.history.messages, toolSet.apiToolDefs);
     if (resp.error !is null) {
@@ -46,14 +46,18 @@ LlamaMessage invokeAgentResponse(Agent agent) {
     }
     auto message = resp.choices[0].message;
     agent.history.messages ~= message;
-    agent.history.printLog();
+    if (printOutput) {
+        agent.history.printLog();
+    }
     agent.history.handleToolResponses(toolSet);
     return message;
 }
 
-LlamaMessage promptAsUser(Agent agent, string prompt) {
+LlamaMessage promptAsUser(Agent agent, string prompt, bool printOutput = true) {
     agent.history.messages ~= userPrompt(prompt);
-    agent.history.printLog();
+    if (printOutput) {
+        agent.history.printLog();
+    }
     return agent.invokeAgentResponse();
 }
 
@@ -67,13 +71,17 @@ bool isEndOfAgentMessageSequence(LlamaMessage message) {
 }
 
 /// Default implementation of a standard agent loop, runs till the agent is "done".
-void runUntilToolUsesAreDone(Agent agent) {
+void runUntilToolUsesAreDone(Agent agent, bool printOutput = true) {
     while (true) {
         auto message = agent.invokeAgentResponse();
         if (message.isEndOfAgentMessageSequence) {
             break;
         }
+        if (printOutput) {
+            agent.history.printLog();
+        }
+    }
+    if (printOutput) {
         agent.history.printLog();
     }
-    agent.history.printLog();
 }
