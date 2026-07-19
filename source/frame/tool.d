@@ -133,8 +133,9 @@ SimpleParam[] extractParams(T)() if (isAggregateType!T) {
         enum field = fields[i];
         enum qualifiedField = "T." ~ field;
         enum docFields = getUDAs!(mixin(qualifiedField), ToolDoc);
-        static assert(docFields.length == 1, "Broken ToolDoc for " ~ qualifiedField);
-        params ~= SimpleParam(field, schemaType!(typeof(mixin(qualifiedField))), docFields[0].description);
+        static assert(docFields.length <= 1, "Can't have multiple ToolDoc defs for " ~ qualifiedField);
+        enum doc = docFields.length > 0 ? docFields[0].description : "";
+        params ~= SimpleParam(field, schemaType!(typeof(mixin(qualifiedField))), doc);
     }}
     return params;
 }
