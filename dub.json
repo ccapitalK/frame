@@ -1,5 +1,5 @@
 {
-    "description": "A minimal llm harness library for D.",
+    "description": "Hackable LLM harness library for D, for unattended jobs that need a bit of fleshy intelligence.",
     "dependencies": {
         "asdf": "~>0.8.0"
     },
