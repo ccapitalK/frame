@@ -2,7 +2,7 @@
 
 A hackable LLM harness library for D, for unattended jobs that need a bit of fleshy intelligence.
 
-** Note: This library is still in development, the broad strokes of the api surface have been determined, but certain
+**Note: This library is still in development, the broad strokes of the api surface have been determined, but certain
 aspects may change drastically in later releases (in particular, around authentication, history management and
 protocol adaptors). There are some convenience features that will also be polished and cleaned up over time.
 Continuations (the eventual solution for hierarchical planning/rewinding chats) are also still very experimental.**
