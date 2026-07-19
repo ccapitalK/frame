@@ -95,7 +95,7 @@ void handleToolResponses(History history, ToolSet toolSet) {
             break;
         } catch(ToolException e) {
             // We trust these to be exposed to the llm  
-            resp = e.msg;
+            resp = "Error: " ~ e.msg;
         } catch(Exception e) {
             resp = "Internal error";
         }
@@ -133,8 +133,12 @@ SimpleParam[] extractParams(T)() if (isAggregateType!T) {
         enum field = fields[i];
         enum qualifiedField = "T." ~ field;
         enum docFields = getUDAs!(mixin(qualifiedField), ToolDoc);
-        static assert(docFields.length <= 1, "Can't have multiple ToolDoc defs for " ~ qualifiedField);
-        enum doc = docFields.length > 0 ? docFields[0].description : "";
+        static if (docFields.length > 0) {
+            static assert(docFields.length <= 1, "Can't have multiple ToolDoc defs for " ~ qualifiedField);
+            enum doc = docFields[0].description;
+        } else {
+            enum doc = "";
+        }
         params ~= SimpleParam(field, schemaType!(typeof(mixin(qualifiedField))), doc);
     }}
     return params;
