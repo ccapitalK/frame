@@ -64,9 +64,6 @@ import std.file;
 import frame.agent;
 import frame.tool;
 
-// Empty request type.
-struct Empty {}
-
 // Response from the "presence" Tool
 struct PresenceResp {
     string[] files;
@@ -84,7 +81,7 @@ struct DivisionReq {
     @ToolDoc("Dividend")
     int v;
     @ToolDoc("Divisor")
-int d;
+    int d;
 }
 
 auto addTool = simpleToolDef!((AddReq req) => req.a + req.b)("add", "Add a to b");
@@ -96,12 +93,15 @@ auto divTool = simpleToolDef!((DivisionReq req) {
     return [req.v / req.d, req.v % req.d];
 })("divide", "Divide v by d, returning [quotient, remainder]");
 
-auto dateTool = simpleToolDef!((Empty _) => Clock.currTime.toISOString)("date", "Get current date and time");
+auto dateTool = simpleToolDef!(() => Clock.currTime.toISOString)("date", "Get current date and time");
+
+bool myFlag;
+auto flagTool = simpleToolDef!({ myFlag = true; }, "markFlag", "Mark flag as true");
 
 auto presenceTool = simpleToolDef!(
-    (Empty _) => PresenceResp(".".dirEntries(SpanMode.shallow).map!"a.name".array, getcwd)
+    () => PresenceResp(".".dirEntries(SpanMode.shallow).map!"a.name".array, getcwd)
 )("presence", "Get the current working directory, and all files/folders in this directory");
 
-auto allTools = [addTool, divTool, dateTool, presenceTool];
+auto allTools = [addTool, divTool, dateTool, presenceTool, flagTool];
 auto agent = modelServer.makeAgent(allTools);
 ```

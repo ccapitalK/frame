@@ -58,17 +58,52 @@ ToolSet makeToolSet(ToolDef[] defs) {
     return toolSet;
 }
 
-private string delegate(string) wrapFuncWithJson(alias f)() if (arity!f == 1) {
-    alias Req = Parameters!f[0];
-    return (string v) {
-        Req decoded;
-        try {
-            decoded = v.deserialize!Req;
-        } catch (AsdfSerdeException e) {
-            return "Failed to parse input";
+/// Pass through the string without escaping as parseable string, to reduce cognitive load of the llm.
+string jsonCoerceToString()(string val) => val;
+
+/// Otherwise make it into a string
+string jsonCoerceToString(T)(T val) {
+    return val.serializeToJson;
+}
+
+/// For the tool call pipeline, we need a function that takes a string and returns a string
+private string delegate(string) wrapFuncForToolCall(alias f)() if (arity!f <= 1) {
+    enum hasParam = arity!f == 1;
+    enum hasReturn = !is(ReturnType!f == void);
+    static if (hasParam) {
+        alias Req = Parameters!f[0];
+        static if (hasReturn) {
+            return (string v) {
+                Req decoded;
+                try {
+                    decoded = v.deserialize!Req;
+                } catch (AsdfSerdeException e) {
+                    return "Failed to parse input";
+                }
+                return f(decoded).jsonCoerceToString;
+            };
+        } else {
+            return (string v) {
+                Req decoded;
+                try {
+                    decoded = v.deserialize!Req;
+                } catch (AsdfSerdeException e) {
+                    return "Failed to parse input";
+                }
+                f(decoded);
+                return "SUCCESS";
+            };
         }
-        return f(decoded).serializeToJson;
-    };
+    } else {
+        static if (hasReturn) {
+            return (string _) => jsonCoerceToString(f());
+        } else {
+            return (string _) {
+                f();
+                return "SUCCESS";
+            };
+        }
+    }
 }
 
 void handleToolResponses(History history, ToolSet toolSet) {
@@ -99,7 +134,8 @@ void handleToolResponses(History history, ToolSet toolSet) {
         } catch(Exception e) {
             resp = "Internal error";
         }
-        // TODO: Handle errors
+        // Note: The llm agent will need to understand that an empty tool call reponse isn't actually empty.
+        resp = resp == "" ? `""` : resp;
         history.messages ~= [
             LlamaMessage(role : "tool", toolCallId: call.id, content: resp)
         ];
@@ -122,6 +158,7 @@ struct ToolDoc {
 }
 
 /// schemaType!T determines the corresponding json schema type for basic type T
+string schemaType(T: bool)() => "boolean";
 string schemaType(T: int)() => "integer";
 string schemaType(T: double)() => "number";
 string schemaType(T: string)() => "string";
@@ -144,11 +181,15 @@ SimpleParam[] extractParams(T)() if (isAggregateType!T) {
     return params;
 }
 
-ToolDef simpleToolDef(alias f)(string name, string desc) if (arity!f == 1) {
-    enum params = extractParams!(Parameters!f[0]);
+ToolDef simpleToolDef(alias f)(string name, string desc) if (arity!f <= 1) {
+    static if (arity!f == 0) {
+        static immutable SimpleParam[] params = [];
+    } else {
+        enum params = extractParams!(Parameters!f[0]);
+    }
     auto toolParams = LlamaToolParameters(
         "object",
-        params.map!"a.name".array,
+        params.map!"cast(string) a.name".array,
         params.map!(a => tuple(a.name, LlamaToolProperty(a.type, a.description))).assocArray,
     );
     return ToolDef(
@@ -157,6 +198,6 @@ ToolDef simpleToolDef(alias f)(string name, string desc) if (arity!f == 1) {
             description: desc,
             parameters: toolParams,
         )),
-        method: wrapFuncWithJson!f,
+        method: wrapFuncForToolCall!f,
     );
 }

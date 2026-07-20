@@ -12,8 +12,6 @@ import frame.client;
 import frame.prompt;
 import frame.tool;
 
-struct Empty {}
-
 struct ViewRange {
     @ToolDoc("File to read from")
     string filename;
@@ -46,7 +44,7 @@ void main(string[] args) {
     void[0][string] doneFiles;
     auto remainingFiles() => files[].filter!(a => a !in doneFiles);
     auto tools = [
-        simpleToolDef!((Empty _) => remainingFiles.array)
+        simpleToolDef!(() => remainingFiles.array)
             ("remainingFiles", "Return list of files yet to be summarized"),
         simpleToolDef!((ViewRange req) {
             enforce(files[].any!(a => a == req.filename), new ToolException("Not in file set"));
@@ -62,13 +60,11 @@ void main(string[] args) {
         simpleToolDef!((AddEntry req) {
             enforce(files.any!(a => a == req.filename), new ToolException("Not in files list"));
             concepts[req.filename] ~= req.concept;
-            return "";
         })("addConcept", "Note a concept introduced in a file"),
         simpleToolDef!((DoneFile req) {
             enforce(req.filename in concepts, new ToolException("No concepts have been marked"));
             enforce(req.filename !in doneFiles, new ToolException("File is already marked done"));
             doneFiles[req.filename] = [];
-            return "";
         })("doneFile", "Submit that a file has been completely read, with all concepts noted."),
     ];
 
