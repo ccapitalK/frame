@@ -96,7 +96,7 @@ auto divTool = simpleToolDef!((DivisionReq req) {
 auto dateTool = simpleToolDef!(() => Clock.currTime.toISOString)("date", "Get current date and time");
 
 bool myFlag;
-auto flagTool = simpleToolDef!({ myFlag = true; }, "markFlag", "Mark flag as true");
+auto flagTool = simpleToolDef!({ myFlag = true; })("markFlag", "Mark flag as true");
 
 auto presenceTool = simpleToolDef!(
     () => PresenceResp(".".dirEntries(SpanMode.shallow).map!"a.name".array, getcwd)
