@@ -49,7 +49,7 @@ LlamaMessage invokeAgentResponse(Agent agent, bool printOutput = true) {
     if (printOutput) {
         agent.history.printLog();
     }
-    agent.history.handleToolResponses(toolSet);
+    agent.history.handleToolResponses(toolSet, printOutput);
     return message;
 }
 

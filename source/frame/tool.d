@@ -106,7 +106,7 @@ private string delegate(string) wrapFuncForToolCall(alias f)() if (arity!f <= 1)
     }
 }
 
-void handleToolResponses(History history, ToolSet toolSet) {
+void handleToolResponses(History history, ToolSet toolSet, bool printOutput = true) {
     auto lastMessage = history.messages[$ - 1];
     if (lastMessage.toolCalls == []) {
         return;
@@ -139,7 +139,9 @@ void handleToolResponses(History history, ToolSet toolSet) {
         history.messages ~= [
             LlamaMessage(role : "tool", toolCallId: call.id, content: resp)
         ];
-        history.printLog();
+        if (printOutput) {
+            history.printLog();
+        }
     }
 }
 
